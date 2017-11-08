@@ -21,7 +21,7 @@ public class SocketService {
 
     private static Logger LOG = LoggerFactory.getLogger(SocketService.class);
 
-    private Map<String, Date> hostList;
+    private Map<String, Node> hostList;
     private String hostName;
     private MulticastSocket socket;
     private InetAddress group;
@@ -29,7 +29,7 @@ public class SocketService {
     private boolean shouldRun = true;
 
     @Autowired
-    public void ListeningService(Map<String, Date> hostList, @Value("HOSTNAME") String hostName) {
+    public void ListeningService(Map<String, Node> hostList, @Value("${HOSTNAME}") String hostName) {
         this.hostList = hostList;
         this.hostName = hostName;
     }
@@ -37,9 +37,11 @@ public class SocketService {
     @PostConstruct
     public void setup() {
         try {
+            LOG.info("Opening the multicast socket...");
             socket = new MulticastSocket(9999);
             group = InetAddress.getByName("224.0.0.1");
             socket.joinGroup(group);
+            LOG.info("...socket open.");
         } catch (IOException e) {
             LOG.error("Something went wrong setting up the listening socket", e);
             e.printStackTrace();
@@ -47,18 +49,20 @@ public class SocketService {
         listeningThread = new Thread(() -> {
             while(shouldRun) {
                 try {
+                    LOG.info("Listening for hostname...");
                     byte[] buffer = new byte[8192];
                     DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
                     socket.receive(packet);
-                    String receivedHostname = new String(packet.getData());
-                    LOG.info("Received hostname {}", receivedHostname);
-                    hostList.put(receivedHostname, new Date());
+                    String receivedHostname = new String(packet.getData(), 0, packet.getLength());
+                    LOG.info("...received hostname {}", receivedHostname);
+                    hostList.put(receivedHostname, new Node(receivedHostname, packet.getAddress().getHostAddress(), new Date()));
                 } catch (IOException e) {
                     LOG.error("Something went wrong while trying to get a host", e);
                     e.printStackTrace();
                 }
             }
         });
+        listeningThread.start();
     }
 
     @PreDestroy
@@ -76,10 +80,9 @@ public class SocketService {
 
     @Scheduled(fixedRate = 5000)
     public void sendHeartbeat() {
-        LOG.info("Sending heartbeat...");
+        LOG.info("Sending heartbeat for {}...", hostName);
 
         try {
-            InetAddress group = InetAddress.getByName("224.0.0.1");
             DatagramPacket packet = new DatagramPacket(hostName.getBytes(), hostName.getBytes().length, group, 9999);
             socket.send(packet);
         } catch (IOException e) {

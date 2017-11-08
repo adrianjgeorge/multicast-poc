@@ -7,7 +7,6 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,7 +21,7 @@ public class OpenshiftMulticastApplication {
     }
 
     @Bean
-    public Map<String, Date> getHostList() {
+    public Map<String,Node> getHostList() {
         return new HashMap<>();
     }
 }

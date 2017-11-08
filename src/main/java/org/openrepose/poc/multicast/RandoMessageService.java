@@ -9,17 +9,14 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Arrays;
-import java.util.Date;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 
 @Service
 public class RandoMessageService {
 
     private static Logger LOG = LoggerFactory.getLogger(RandoMessageService.class);
 
-    private Map<String, Date> hostList;
+    private Map<String, Node> hostList;
     private String hostName;
     private String port;
     private RestTemplate rest;
@@ -27,7 +24,7 @@ public class RandoMessageService {
     private Random random = new Random();
 
     @Autowired
-    public RandoMessageService(Map<String, Date> hostList, @Value("HOSTNAME") String hostName, @Value("server.port") String port) {
+    public RandoMessageService(Map<String, Node> hostList, @Value("${HOSTNAME}") String hostName, @Value("${server.port}") String port) {
         this.hostList = hostList;
         this.hostName = hostName;
         this.port = port;
@@ -36,11 +33,11 @@ public class RandoMessageService {
 
     @Scheduled(fixedRate = 3000)
     public void sendRandoMessage() {
-        Object[] hosts = hostList.keySet().toArray();
-        if(hosts.length > 0) {
-            Object target = hosts[random.nextInt(hosts.length)];
+        List<String> hosts = new ArrayList<>(hostList.keySet());
+        if(hosts.size() > 0) {
+            String target = hosts.get(random.nextInt(hosts.size()));
             LOG.info("Sending a message to {} ...", target);
-            rest.postForLocation(target.toString() + ":" + port, hostName);
+            rest.postForLocation("http://" + hostList.get(target).getIp() + ":" + port, hostName);
             LOG.info("...message sent");
         } else {
             LOG.info("Nobody to send messages to yet.");

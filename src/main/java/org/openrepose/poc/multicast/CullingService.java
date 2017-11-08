@@ -8,16 +8,17 @@ import org.springframework.stereotype.Service;
 
 import java.util.Date;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class CullingService {
 
     private static Logger LOG = LoggerFactory.getLogger(CullingService.class);
 
-    private Map<String, Date> hostList;
+    private Map<String, Node> hostList;
 
     @Autowired
-    public CullingService(Map<String, Date> hostList) {
+    public CullingService(Map<String, Node> hostList) {
         this.hostList = hostList;
     }
 
@@ -27,7 +28,8 @@ public class CullingService {
 
         hostList.entrySet()
                 .stream()
-                .filter( entry -> entry.getValue().getTime() <= (new Date().getTime() - 10000) )
+                .filter( entry -> entry.getValue().getLastSeen().getTime() <= (new Date().getTime() - 10000) )
+                .collect(Collectors.toSet()) //still a dirty hack
                 .forEach( entry -> {
                     LOG.info("Culling {}", entry.getKey());
                     hostList.remove(entry.getKey());
